@@ -1,53 +1,3 @@
-local _runtime_libs =
-{
-    "rive",
-    "rive_harfbuzz",
-    "rive_sheenbidi",
-    "rive_yoga",
-    "miniaudio",
-    "rive_pls_renderer"
-}
-
-local function _config_name(package)
-    return package:debug() and "debug" or "release"
-end
-
-local function _copy_match(pattern, dst)
-    local files = os.files(pattern)
-    if #files > 0 then
-        os.cp(files, dst)
-    end
-end
-
-local function _prepare_premake_script(sourcedir)
-    local premake_v2 = path.join(sourcedir, "premake5_v2.lua")
-    local premake = path.join(sourcedir, "premake5.lua")
-    if os.isfile(premake_v2) and not os.isfile(premake) then
-        os.mv(premake_v2, premake)
-    end
-end
-
-local function _install_built_artifacts(package, outdir)
-    os.cp(path.join(package:sourcedir(), "include"), package:installdir())
-    if os.isdir(path.join(package:sourcedir(), "renderer", "include")) then
-        os.cp(path.join(package:sourcedir(), "renderer", "include"), package:installdir("renderer"))
-    end
-    if os.isdir(path.join(package:sourcedir(), "decoders", "include")) then
-        os.cp(path.join(package:sourcedir(), "decoders", "include"), package:installdir("decoders"))
-    end
-    os.mkdir(package:installdir("lib"))
-    for _, libname in ipairs(_runtime_libs) do
-        if package:is_plat("windows") then
-            _copy_match(path.join(outdir, libname .. ".lib"), package:installdir("lib"))
-            _copy_match(path.join(outdir, libname .. ".pdb"), package:installdir("lib"))
-        else
-            _copy_match(path.join(outdir, "lib" .. libname .. ".a"), package:installdir("lib"))
-        end
-    end
-    assert(os.isfile(path.join(package:installdir("lib"), package:is_plat("windows") and "rive.lib" or "librive.a")),
-        "rive-runtime main library not found in %s", outdir)
-end
-
 package("rive-runtime")
     set_homepage("https://github.com/rive-app/rive-runtime")
     set_description("Rive C++ runtime library built via premake5 build scripts.")
@@ -165,7 +115,7 @@ package("rive-runtime")
     add_versions("0.1.99", "53a09b923e6547ee200cf4185544f63b9add6fc8")
 
     add_includedirs("include", "renderer/include", "decoders/include")
-    add_links("rive", "rive_harfbuzz", "rive_sheenbidi", "rive_yoga", "miniaudio", "rive_pls_renderer")
+    add_links("rive", "rive_harfbuzz", "rive_sheenbidi", "rive_yoga", "miniaudio")
 
     if is_plat("linux") then
         add_syslinks("dl", "pthread")
@@ -175,23 +125,100 @@ package("rive-runtime")
     set_policy("package.install_always", true)
 
     on_install("linux", "macosx", function (package)
-        local sourcedir = package:sourcedir()
-        local config = _config_name(package)
-        _prepare_premake_script(sourcedir)
-        local args = {"build/build_rive.sh", config, "clean" }
-        os.vrunv("bash", args, {curdir = sourcedir})
-        _install_built_artifacts(package, path.join(sourcedir, "out", config))
+        import("tools")
+        local _runtime_libs =
+        {
+            "rive",
+            "rive_harfbuzz",
+            "rive_sheenbidi",
+            "rive_yoga",
+            "miniaudio"
+        }
+        local sourcedir = path.join(package:cachedir(), "source", "rive-runtime")
+        local config = tools.ConfigName(package)
+        local premake_v2 = path.join(sourcedir, "premake5_v2.lua")
+       	local premake = path.join(sourcedir, "premake5.lua")
+        if os.isfile(premake_v2) and not os.isfile(premake) then
+            os.mv(premake_v2, premake)
+       	end
+        local function _copy_match(pattern, dst)
+            local files = os.files(pattern)
+            for _, file in ipairs(files) do
+                os.cp(file, dst)
+            end
+        end
+        local function install_built_artifacts(package, sourcedir, outdir)
+            print("----------------------------------------------------")
+            print(path.join(sourcedir, "include"))
+            print(package:installdir())
+            os.cp(path.join(sourcedir, "include"), package:installdir())
+            if os.isdir(path.join(sourcedir, "renderer", "include")) then
+                os.cp(path.join(sourcedir, "renderer", "include"), package:installdir("renderer"))
+            end
+            if os.isdir(path.join(sourcedir, "decoders", "include")) then
+                os.cp(path.join(sourcedir, "decoders", "include"), package:installdir("decoders"))
+            end
+            os.mkdir(package:installdir("lib"))
+            for _, libname in ipairs(_runtime_libs) do
+                if package:is_plat("windows") then
+                    _copy_match(path.join(outdir, libname .. ".lib"), package:installdir("lib"))
+                    _copy_match(path.join(outdir, libname .. ".pdb"), package:installdir("lib"))
+                else
+                    _copy_match(path.join(outdir, "lib" .. libname .. ".a"), package:installdir("lib"))
+                end
+            end
+            assert(os.isfile(path.join(package:installdir("lib"), package:is_plat("windows") and "rive.lib" or "librive.a")),
+                "rive-runtime main library not found in %s", outdir)
+        end
+        local args = { "build/build_rive.sh", config, "clean" }
+        os.vrunv("bash", args, { curdir = sourcedir })
+        install_built_artifacts(package, sourcedir, path.join(sourcedir, "out", config))
     end)
 
     on_install("windows", function (package)
-        local sourcedir = package:sourcedir()
-        local config = _config_name(package)
+        import("tools")
+        local _runtime_libs =
+        {
+            "rive",
+            "rive_harfbuzz",
+            "rive_sheenbidi",
+            "rive_yoga",
+            "miniaudio"
+        }
+        local sourcedir = path.join(package:cachedir(), "source", "rive-runtime")
+        local function _copy_match(pattern, dst)
+            local files = os.files(pattern)
+            for _, file in ipairs(files) do
+                os.cp(file, dst)
+            end
+        end
+        local function install_built_artifacts(package, sourcedir, outdir)
+            os.cp(path.join(sourcedir, "include"), package:installdir())
+            if os.isdir(path.join(sourcedir, "renderer", "include")) then
+                os.cp(path.join(sourcedir, "renderer", "include"), package:installdir("renderer"))
+            end
+            if os.isdir(path.join(sourcedir, "decoders", "include")) then
+                os.cp(path.join(sourcedir, "decoders", "include"), package:installdir("decoders"))
+            end
+            os.mkdir(package:installdir("lib"))
+            for _, libname in ipairs(_runtime_libs) do
+                if package:is_plat("windows") then
+                    _copy_match(path.join(outdir, libname .. ".lib"), package:installdir("lib"))
+                    _copy_match(path.join(outdir, libname .. ".pdb"), package:installdir("lib"))
+                else
+                    _copy_match(path.join(outdir, "lib" .. libname .. ".a"), package:installdir("lib"))
+                end
+            end
+            assert(os.isfile(path.join(package:installdir("lib"), package:is_plat("windows") and "rive.lib" or "librive.a")),
+                "rive-runtime main library not found in %s", outdir)
+        end
+        local config = tools.ConfigName(package)
         -- Upstream provides setup_windows_dev.bat and build_rive.bat, not setup_windows_env.bat.
-        local args = {"/c", "build\\build_rive.bat", config, "clean" }
-        os.vrunv("cmd", args, {curdir = sourcedir})
-        _install_built_artifacts(package, path.join(sourcedir, "out", config))
+        local args = { "/c", "build\\build_rive.bat", config, "clean" }
+        os.vrunv("cmd", args, { curdir = sourcedir })
+        install_built_artifacts(package, path.join(sourcedir, "out", config))
     end)
 
-    on_test(function (package)
+    on_test( function (package)
         assert(package:has_cxxincludes("rive/artboard.hpp"))
     end)
