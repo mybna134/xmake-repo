@@ -29,6 +29,14 @@ local function _copy_match(pattern, dst)
     end
 end
 
+local function _prepare_premake_script(sourcedir)
+    local premake_v2 = path.join(sourcedir, "premake_v2.lua")
+    local premake = path.join(sourcedir, "premake.lua")
+    if os.isfile(premake_v2) and not os.isfile(premake) then
+        os.mv(premake_v2, premake)
+    end
+end
+
 local function _install_built_artifacts(package, outdir)
     os.cp(path.join(package:sourcedir(), "include"), package:installdir())
     if os.isdir(path.join(package:sourcedir(), "renderer", "include")) then
@@ -179,7 +187,8 @@ package("rive-runtime")
     on_install("linux", "macosx", function (package)
         local sourcedir = package:sourcedir()
         local config = _config_name(package)
-        local args = {"build/build_rive.sh", config, "clean", "--with_rive_audio=external", "--with_vulkan", "--"}
+        _prepare_premake_script(sourcedir)
+        local args = {"build/build_rive.sh", config, "clean", "--with_rive_audio=external" }
         table.join2(args, _build_targets)
         os.vrunv("bash", args, {curdir = sourcedir})
         _install_built_artifacts(package, path.join(sourcedir, "out", config))
@@ -189,7 +198,7 @@ package("rive-runtime")
         local sourcedir = package:sourcedir()
         local config = _config_name(package)
         -- Upstream provides setup_windows_dev.bat and build_rive.bat, not setup_windows_env.bat.
-        local args = {"/c", "build\\build_rive.bat", config, "clean", "--with_rive_audio=external", "--with_vulkan", "--"}
+        local args = {"/c", "build\\build_rive.bat", config, "clean", "--with_rive_audio=external" }
         table.join2(args, _build_targets)
         os.vrunv("cmd", args, {curdir = sourcedir})
         _install_built_artifacts(package, path.join(sourcedir, "out", config))
