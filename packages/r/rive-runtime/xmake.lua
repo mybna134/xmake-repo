@@ -30,8 +30,8 @@ local function _copy_match(pattern, dst)
 end
 
 local function _prepare_premake_script(sourcedir)
-    local premake_v2 = path.join(sourcedir, "premake_v2.lua")
-    local premake = path.join(sourcedir, "premake.lua")
+    local premake_v2 = path.join(sourcedir, "premake5_v2.lua")
+    local premake = path.join(sourcedir, "premake5.lua")
     if os.isfile(premake_v2) and not os.isfile(premake) then
         os.mv(premake_v2, premake)
     end
