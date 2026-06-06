@@ -188,7 +188,7 @@ package("rive-runtime")
         local sourcedir = package:sourcedir()
         local config = _config_name(package)
         _prepare_premake_script(sourcedir)
-        local args = {"build/build_rive.sh", config, "clean", "--with_rive_audio=external" }
+        local args = {"build/build_rive.sh", config, "clean" }
         table.join2(args, _build_targets)
         os.vrunv("bash", args, {curdir = sourcedir})
         _install_built_artifacts(package, path.join(sourcedir, "out", config))
@@ -198,7 +198,7 @@ package("rive-runtime")
         local sourcedir = package:sourcedir()
         local config = _config_name(package)
         -- Upstream provides setup_windows_dev.bat and build_rive.bat, not setup_windows_env.bat.
-        local args = {"/c", "build\\build_rive.bat", config, "clean", "--with_rive_audio=external" }
+        local args = {"/c", "build\\build_rive.bat", config, "clean" }
         table.join2(args, _build_targets)
         os.vrunv("cmd", args, {curdir = sourcedir})
         _install_built_artifacts(package, path.join(sourcedir, "out", config))
